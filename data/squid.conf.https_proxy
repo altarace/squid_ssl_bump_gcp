@@ -1,29 +1,8 @@
-
 always_direct allow all
 
-
-acl localnet src 10.0.0.0/8	# RFC1918 possible internal network
-acl localnet src 172.16.0.0/12	# RFC1918 possible internal network
-acl localnet src 192.168.0.0/16	# RFC1918 possible internal network
-
-acl localhost src 127.0.0.1/32
-acl to_localhost dst 127.0.0.0/8
-acl SSL_ports port 443
-
-acl CONNECT method CONNECT
-
-http_access allow all
-http_access allow manager localhost
-http_access deny manager
-
-http_access allow localnet
+acl GOOD dstdomain .accounts.google.com .clients6.google.com .clients2.google.com .cloud.google.com .gstatic.com .googleusercontent.com .googleapis.com
+http_access allow GOOD
 http_access deny all
-
-icp_access allow localnet
-icp_access deny all
-
-htcp_access allow localnet
-htcp_access deny all
 
 visible_hostname squid.yourdomain.com
 http_port 0.0.0.0:3128 ssl-bump generate-host-certificates=on cert=/data/certs/CA_crt.pem key=/data/certs/CA_key.pem
@@ -54,5 +33,3 @@ access_log /apps/squid/var/logs/access.log squid !gcplb
 
 icp_port 3130
 coredump_dir /apps/squid/var/cache
-
-

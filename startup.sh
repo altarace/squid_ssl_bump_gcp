@@ -7,9 +7,7 @@ mkdir -p /var/log/supervisor
 mkdir /apps/
 cd /apps/
 
-export PROJECTID=$(curl -s http://metadata.google.internal/computeMetadata/v1/project/project-id -H "Metadata-Flavor: Google")
-
-/usr/bin/gsutil cp   gs://$PROJECTID-squid-src/squid.tar .
+/usr/bin/gsutil cp   gs://$BUCKET_SRC/squid.tar .
 tar xf squid.tar
 rm squid.tar
 
@@ -51,14 +49,13 @@ mkdir /data
 cd /data
 cat <<EOF > /apps/resync.sh
 #!/bin/sh
-export PROJECTID=$(curl -s http://metadata.google.internal/computeMetadata/v1/project/project-id -H "Metadata-Flavor: Google")
-/usr/bin/gsutil -m rsync   -d -r  gs://$PROJECTID-squid-src/data/ /data/
+/usr/bin/gsutil -m rsync   -d -r  gs://$BUCKET_SRC/data/ /data/
 EOF
 chmod u+x /apps/resync.sh
 
 /apps/resync.sh
 
-sed -E 's/(-+(BEGIN|END) RSA PRIVATE KEY-+) *| +/\1\n/g' <<< `gcloud beta secrets versions access 1 --secret squid` > /data/certs/CA_key.pem
+sed -E 's/(-+(BEGIN|END) RSA PRIVATE KEY-+) *| +/\1\n/g' <<< `gcloud beta secrets versions access 1 --secret $SECRET_NAME` > /data/certs/CA_key.pem
 
 
 cat <<EOF > /etc/google-fluentd/config.d/squid.conf
