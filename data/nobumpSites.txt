@@ -1,2 +1,1 @@
-.wellsfargo.com
-.github.com
+.TRUSTED_DOMAIN.com
