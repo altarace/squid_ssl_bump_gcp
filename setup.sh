@@ -24,9 +24,9 @@ export NETNAME=custom-network2
 export SECRET_NAME=squidkey
 export RANGE=192.168.1.0/24
 export PREFIX=`echo $RANGE|cut -c1-3`
-export NAT_ROUTER=squid-nat-router
-export NAT_IP=squid-natip
-export NAT_CONF=squid-nat-config
+#export NAT_ROUTER=squid-nat-router
+#export NAT_IP=squid-natip
+#export NAT_CONF=squid-nat-config
 export TEMPLATE_NAME=squid-template-1
 export PROXY_TAG=squidproxy
 export VDI_TAG=bastionvm
@@ -61,13 +61,13 @@ gsutil iam ch serviceAccount:$GCE_SERVICE_ACCOUNT:objectViewer gs://$BUCKET_SRC
 gcloud projects add-iam-policy-binding $GOOGLE_PROJECT_ID     --member=serviceAccount:$GCE_SERVICE_ACCOUNT    --role=roles/monitoring.metricWriter
 gcloud projects add-iam-policy-binding $GOOGLE_PROJECT_ID     --member=serviceAccount:$GCE_SERVICE_ACCOUNT    --role=roles/logging.logWriter
 
-gcloud compute networks create $NETNAME --subnet-mode custom
-gcloud compute networks subnets create subnet-$REGION\-$PREFIX  --network $NETNAME --region $REGION --range $RANGE
+gcloud compute networks create $NETNAME --subnet-mode custom 
+gcloud compute networks subnets create subnet-$REGION\-$PREFIX  --network $NETNAME --region $REGION --range $RANGE --enable-private-ip-google-access
 
-gcloud compute routers create $NAT_ROUTER  --network $NETNAME  --region  $REGION 
-gcloud compute addresses create $NAT_IP --region $REGION --ip-version IPV4
+#gcloud compute routers create $NAT_ROUTER  --network $NETNAME  --region  $REGION 
+#gcloud compute addresses create $NAT_IP --region $REGION --ip-version IPV4
 #export NATIP=gcloud compute addresses describe $NAT_IP --region $REGION --format="value(address)"
-gcloud compute routers nats create $NAT_CONF --router=$NAT_ROUTER --nat-external-ip-pool=$NAT_IP --nat-custom-subnet-ip-ranges=subnet-$REGION\-$PREFIX  --region  $REGION 
+#gcloud compute routers nats create $NAT_CONF --router=$NAT_ROUTER --nat-external-ip-pool=$NAT_IP --nat-custom-subnet-ip-ranges=subnet-$REGION\-$PREFIX  --region  $REGION 
 
 envsubst <startup.sh >$STARTUP_SCRIPT
 
