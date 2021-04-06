@@ -24,9 +24,9 @@ export NETNAME=custom-network2
 export SECRET_NAME=squidkey
 export RANGE=192.168.1.0/24
 export PREFIX=`echo $RANGE|cut -c1-3`
-#export NAT_ROUTER=squid-nat-router
-#export NAT_IP=squid-natip
-#export NAT_CONF=squid-nat-config
+export NAT_ROUTER=squid-nat-router
+export NAT_IP=squid-natip
+export NAT_CONF=squid-nat-config
 export TEMPLATE_NAME=squid-template-1
 export PROXY_TAG=squidproxy
 export VDI_TAG=bastionvm
@@ -38,9 +38,10 @@ export ILB_NAME=squid-ilb-central1
 
 gsutil mb gs://$BUCKET_SRC
 gcloud services enable oslogin.googleapis.com iap.googleapis.com secretmanager.googleapis.com
-docker build -t docker_tmp .
-docker cp `docker create docker_tmp`:/apps/squid .
-tar cvf squid.tar squid/
+#uncomment if you'd like to build squid with ssl yourself, otherwise will use binary already in repo
+#docker build -t docker_tmp .
+#docker cp `docker create docker_tmp`:/apps/squid .
+#tar cvf squid.tar squid/
 gsutil cp squid.tar gs://$BUCKET_SRC/
 #rm -rf squid.tar squid/
 cd data/
@@ -49,7 +50,7 @@ gsutil cp  -r . gs://$BUCKET_SRC/data/
 cd ..
 export squid_key=`cat keys/CA_key.pem`
 #echo $squid_key
-echo -n $squid_key | gcloud beta secrets create $SECRET_NAME --replication-policy=automatic --data-file=-
+echo -n $squid_key | gcloud beta secrets create $SECRET_NAME --replication-policy=user-managed --locations=us-central1 --data-file=-
 gcloud iam service-accounts create $SVC_ACCT --display-name "GCE Service Account"
 #gcloud iam service-accounts describe  $GCE_SERVICE_ACCOUNT
 
@@ -64,14 +65,14 @@ gcloud projects add-iam-policy-binding $GOOGLE_PROJECT_ID     --member=serviceAc
 gcloud compute networks create $NETNAME --subnet-mode custom 
 gcloud compute networks subnets create subnet-$REGION\-$PREFIX  --network $NETNAME --region $REGION --range $RANGE --enable-private-ip-google-access
 
-#gcloud compute routers create $NAT_ROUTER  --network $NETNAME  --region  $REGION 
-#gcloud compute addresses create $NAT_IP --region $REGION --ip-version IPV4
+gcloud compute routers create $NAT_ROUTER  --network $NETNAME  --region  $REGION 
+gcloud compute addresses create $NAT_IP --region $REGION --ip-version IPV4
 #export NATIP=gcloud compute addresses describe $NAT_IP --region $REGION --format="value(address)"
-#gcloud compute routers nats create $NAT_CONF --router=$NAT_ROUTER --nat-external-ip-pool=$NAT_IP --nat-custom-subnet-ip-ranges=subnet-$REGION\-$PREFIX  --region  $REGION 
+gcloud compute routers nats create $NAT_CONF --router=$NAT_ROUTER --nat-external-ip-pool=$NAT_IP --nat-custom-subnet-ip-ranges=subnet-$REGION\-$PREFIX  --region  $REGION 
 
 envsubst <startup.sh >$STARTUP_SCRIPT
 
-gcloud compute instance-templates create $TEMPLATE_NAME --no-address --metadata=enable-oslogin=FALSE --service-account=$GCE_SERVICE_ACCOUNT --scopes=cloud-platform \
+gcloud compute instance-templates create $TEMPLATE_NAME --no-address --metadata=enable-oslogin=TRUE,block-project-ssh-keys=TRUE --service-account=$GCE_SERVICE_ACCOUNT --scopes=cloud-platform \
 --machine-type g1-small --tags $PROXY_TAG  --network $NETNAME --image-family=debian-9  --image-project=debian-cloud --subnet=subnet-$REGION\-$PREFIX --region $REGION \
 --metadata-from-file startup-script=$STARTUP_SCRIPT
 gcloud compute  firewall-rules create $PROXY_TAG\-rules-squid-allow-hc  --priority=1000 --network $NETNAME  --allow=tcp:3128 --source-ranges=130.211.0.0/22,35.191.0.0/16  --target-tags=$PROXY_TAG 
