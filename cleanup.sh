@@ -1,4 +1,4 @@
-export NAMESPACE=km
+export NAMESPACE=ma
 
 #gcloud auth login
 export GOOGLE_PROJECT_ID=`gcloud config get-value core/project`
