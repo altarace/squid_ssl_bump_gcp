@@ -12,7 +12,7 @@
 sudo apt install gettext
 
 #change to make a whole new unique environment
-export NAMESPACE=km
+export NAMESPACE=ma
 
 #gcloud auth login
 export GOOGLE_PROJECT_ID=`gcloud config get-value core/project`
@@ -40,6 +40,13 @@ export INSTANCE_GROUP=squid-central1-ig-$NAMESPACE
 export BACKEND=squid-backend-service-$NAMESPACE
 export ILB_NAME=squid-ilb-central1-$NAMESPACE
 export TEST_INSTANCE=test-$NAMESPACE
+
+envsubst <data/allowed.urls >>data/allowed.urls.tmp
+envsubst <data/allowed.post.urls >>data/allowed.post.urls.tmp
+mv data/allowed.post.urls.tmp data/allowed.post.urls
+mv data/allowed.urls.tmp data/allowed.urls
+
+
 
 gsutil mb gs://$BUCKET_SRC
 gcloud services enable oslogin.googleapis.com iap.googleapis.com secretmanager.googleapis.com
@@ -118,9 +125,9 @@ gcloud compute forwarding-rules create $ILB_NAME \
 
 export ILB_IP=`gcloud compute forwarding-rules describe $ILB_NAME --region $REGION --format="value(IPAddress)"`
 
-gcloud compute firewall-rules create $VDI_TAG\-allow-to-ilb --direction=EGRESS --priority=1100 --network=$NETNAME --action=ALLOW --destination-ranges=$ILB_IP --rules=tcp:443 --target-tags=$VDI_TAG
+gcloud compute firewall-rules create $VDI_TAG\-allow-to-ilb --direction=EGRESS --priority=1100 --network=$NETNAME --action=ALLOW --destination-ranges=$ILB_IP/32 --rules=tcp:3128 --target-tags=$VDI_TAG
 
 #create test instance
-gcloud beta compute instances create $TEST_INSTANCE --zone=$ZONE --machine-type=e2-medium --subnet=$SUBNET --no-address --metadata=enable-oslogin=true --maintenance-policy=MIGRATE --image=debian-10-buster-v20210316 --image-project=debian-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$TEST_INSTANCE --no-service-account --no-scopes --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --reservation-affinity=any
+gcloud beta compute instances create $TEST_INSTANCE --zone=$ZONE --machine-type=e2-medium --subnet=$SUBNET --no-address --metadata=enable-oslogin=true --maintenance-policy=MIGRATE --tags=$VDI_TAG --image=debian-10-buster-v20210420 --image-project=debian-cloud --boot-disk-size=10GB --boot-disk-type=pd-balanced --boot-disk-device-name=$TEST_INSTANCE --no-service-account --no-scopes --no-shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring --reservation-affinity=any
 
 

@@ -1,35 +1,38 @@
-always_direct allow all
-
-acl GOOD dstdomain .accounts.google.com .clients6.google.com .clients2.google.com .cloud.google.com .gstatic.com .googleusercontent.com .googleapis.com
-http_access allow GOOD
-http_access deny all
-
-visible_hostname squid.yourdomain.com
-http_port 0.0.0.0:3128 ssl-bump generate-host-certificates=on cert=/data/certs/CA_crt.pem key=/data/certs/CA_key.pem
-
-acl excluded_sites ssl::server_name  "/data/nobumpSites.txt"
-ssl_bump splice excluded_sites
-ssl_bump bump all
-
-sslproxy_cert_error deny all
-sslcrtd_program /apps/squid/libexec/security_file_certgen -s /apps/squid/var/lib/ssl_db -M 4MB sslcrtd_children 8 startup=1 idle=1
-
-icap_enable          on
-icap_preview_enable  on
-icap_preview_size    128
-icap_send_client_ip  on
-
-icap_service service_req reqmod_precache icap://127.0.0.1:13440/request
-adaptation_access service_req allow all
+debug_options ALL,4
 
 cache deny all
 
-# Attempt to filter out the LB logs...
-acl gcplb src 130.211.0.0/22 
-acl gcplb src 35.191.0.0/16
 
-access_log /apps/squid/var/logs/access.log squid !gcplb
+acl SSL_ports port 443 
+acl CONNECT method CONNECT
+#CP_block prevents project switching, need to manually add ?project=$PROJECT_ID to browser URL initially connect CP_block if ok to project switch
+acl CP_block url_regex -i "/data/blocked.urls"
+acl CP_nopost method POST
+acl CP_posturls url_regex -i "/data/allowed.post.urls"
+acl CP_allowed url_regex -i "/data/allowed.urls"
 
+http_access deny CONNECT !SSL_ports
 
-icp_port 3130
-coredump_dir /apps/squid/var/cache
+http_access allow localhost manager
+http_access deny manager
+
+http_access deny CP_block
+http_access allow CP_posturls
+http_access allow CP_allowed
+
+http_access allow localhost
+http_access deny all
+
+http_port 3128 ssl-bump \
+   cert=/apps/CA-cert-key.pem \
+   generate-host-certificates=on dynamic_cert_mem_cache_size=16MB
+
+sslcrtd_program /apps/squid/libexec/security_file_certgen -s /apps/squid/var/lib/ssl_db -M 16MB 
+sslcrtd_children 8 startup=1 idle=1
+
+acl step1 at_step SslBump1
+ssl_bump peek step1
+ssl_bump bump all
+ssl_bump splice all
+
+coredump_dir /apps/squid/var/core

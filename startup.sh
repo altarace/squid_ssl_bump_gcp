@@ -1,6 +1,4 @@
 #! /bin/bash    
-# apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y -qq wget curl supervisor git openssl python-pip build-essential libssl-dev wget python-pip vim python-setuptools inotify-tools google-cloud-sdk
-
 apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y -qq wget curl supervisor git openssl python-pip build-essential libssl-dev wget python-pip vim python-setuptools inotify-tools google-cloud-sdk python-six
 
 mkdir -p /var/log/supervisor
@@ -11,23 +9,9 @@ cd /apps/
 tar xf squid.tar
 rm squid.tar
 
-# wget -O - http://www.squid-cache.org/Versions/v4/squid-4.9.tar.gz | tar zxfv - \
-#     && CPU=$(( `nproc --all` )) \
-#     && cd /apps/squid-4.9/ \
-#     && ./configure --prefix=/apps/squid --enable-icap-client --enable-ssl --with-openssl --enable-ssl-crtd  \
-#     && make -j$CPU \
-#     && make install \
-#     && cd /apps \
-#     && rm -rf /apps/squid-4.9
-
 chown -R nobody /apps/
 mkdir -p  /apps/squid/var/lib/
 /apps/squid/libexec/security_file_certgen -c -s /apps/squid/var/lib/ssl_db -M 1MB
-
-cd /apps
-git clone https://github.com/netom/pyicap
-cd /apps/pyicap
-./setup.py install
 
 cd /
 export HOME=/root
@@ -57,6 +41,7 @@ chmod u+x /apps/resync.sh
 
 sed -E 's/(-+(BEGIN|END) RSA PRIVATE KEY-+) *| +/\1\n/g' <<< `gcloud beta secrets versions access 1 --secret $SECRET_NAME` > /data/certs/CA_key.pem
 
+cat /data/certs/CA_crt.pem /data/certs/CA_key.pem >/apps/CA-cert-key.pem
 
 cat <<EOF > /etc/google-fluentd/config.d/squid.conf
 <source>
@@ -97,10 +82,6 @@ command=/apps/squid/sbin/squid  -NsY -f /data/squid.conf.https_proxy
 stdout_events_enabled=true
 stderr_events_enabled=true
 
-[program:icap_filter]
-command=/usr/bin/python /data/pyicap/filter.py
-stdout_events_enabled=true
-stderr_events_enabled=true
 EOF
 
 
@@ -110,8 +91,8 @@ service google-fluentd restart
 cat <<EOF > /apps/monitorfile.sh
 #!/bin/sh
 while true; do
-  inotifywait -e modify /data/pyicap/filter_list.txt
-  /usr/bin/supervisorctl -c  /etc/supervisor/supervisord.conf restart icap_filter  
+  inotifywait -e modify /data/*
+  /usr/bin/supervisorctl -c  /etc/supervisor/supervisord.conf restart squid3  
 done
 EOF
 
