@@ -3,6 +3,6 @@ The squid allowed.urls and allowed.post.urls should be reviewed to confirm the n
 The target VM's (like the test VM being launched by the setup.sh script) will only have egress access through the squid proxy. 
 
 Usage:
-update namespace in setup.sh (optional)
-authenticate with gcloud
-run setup.sh
+<br>update namespace in setup.sh (optional)
+<br>authenticate with gcloud
+<br>run setup.sh
